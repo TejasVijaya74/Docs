@@ -1,13 +1,4 @@
-﻿---
-title: Doc Analysis API
-emoji: 📄
-colorFrom: blue
-colorTo: green
-sdk: docker
-pinned: false
----
-
-# AI-Powered Document Analysis & Extraction API
+﻿# AI-Powered Document Analysis & Extraction API
 
 A production-grade REST API that accepts PDF, DOCX, and image documents and returns structured AI-extracted insights.
 
