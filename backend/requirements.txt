@@ -24,3 +24,5 @@ spacy>=3.8.0
 
 # Utilities
 pydantic>=2.9.0
+
+httpx
