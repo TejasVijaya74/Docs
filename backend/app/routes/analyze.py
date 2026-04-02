@@ -44,20 +44,14 @@ async def analyze_document(request: Request):
     saved_path: Path | None = None
     filename = "document"
 
-    logger.info(f"=== INCOMING REQUEST ===")
-    logger.info(f"Content-Type: {request.headers.get('content-type', 'NONE')}")
-    logger.info(f"All headers: {dict(request.headers)}")
-
     try:
         content_type = request.headers.get("content-type", "")
 
         if "multipart/form-data" in content_type:
             form = await request.form()
-            logger.info(f"Form keys: {list(form.keys())}")
             file = None
             for key in form:
                 value = form[key]
-                logger.info(f"Form field '{key}': type={type(value).__name__}, has_read={hasattr(value, 'read')}")
                 if hasattr(value, "read"):
                     file = value
                     break
@@ -69,30 +63,28 @@ async def analyze_document(request: Request):
             saved_path = await save_bytes(data, ext)
 
         elif "application/json" in content_type:
-            import httpx
             body = await request.json()
-            logger.info(f"JSON keys: {list(body.keys())}")
-            if "file" in body and isinstance(body["file"], str):
+            logger.info(f"JSON body keys: {list(body.keys())}")
+
+            # Handle evaluator format: fileName, fileType, fileBase64
+            file_b64 = body.get("fileBase64") or body.get("file")
+            filename = body.get("fileName") or body.get("filename", "document.pdf")
+            file_type = body.get("fileType", "")
+
+            if file_b64:
                 try:
-                    data = base64.b64decode(body["file"])
-                    filename = body.get("filename", "document.pdf")
-                    ext = guess_extension(filename)
+                    data = base64.b64decode(file_b64)
+                    ext = guess_extension(filename, file_type)
                     saved_path = await save_bytes(data, ext)
+                    logger.info(f"Decoded base64 file: {filename}, size: {len(data)} bytes")
                 except Exception as e:
                     logger.error(f"Base64 decode failed: {e}")
-            if saved_path is None and "url" in body:
-                async with httpx.AsyncClient() as client:
-                    resp = await client.get(body["url"])
-                    filename = body.get("filename", "document.pdf")
-                    ext = guess_extension(filename)
-                    saved_path = await save_bytes(resp.content, ext)
-            if saved_path is None:
-                raise HTTPException(status_code=422, detail="JSON body must contain 'file' (base64) or 'url'.")
+                    raise HTTPException(status_code=422, detail=f"Failed to decode base64 file: {e}")
+            else:
+                raise HTTPException(status_code=422, detail="JSON body must contain 'fileBase64' or 'file'.")
 
         else:
             data = await request.body()
-            logger.info(f"Raw body length: {len(data)} bytes")
-            logger.info(f"Raw body preview: {data[:200]}")
             if not data:
                 raise HTTPException(status_code=422, detail="Empty request body.")
             ext = guess_extension(content_type=content_type)
