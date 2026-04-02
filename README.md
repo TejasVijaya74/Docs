@@ -67,6 +67,7 @@ backend/
 ├── requirements.txt
 └── Dockerfile
 ```
+![Architecture](assets/doc_analysis_architecture.svg)
 
 ## Tech Stack
 
