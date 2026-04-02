@@ -11,7 +11,7 @@ class EntitiesSchema(BaseModel):
 
 
 class AnalysisResponse(BaseModel):
-    filename: str
+    fileName: str
     extracted_text_preview: str
     summary: str
     entities: EntitiesSchema
@@ -19,7 +19,7 @@ class AnalysisResponse(BaseModel):
 
     model_config = {"json_schema_extra": {
         "example": {
-            "filename": "contract.pdf",
+            "fileName": "contract.pdf",
             "extracted_text_preview": "This agreement is made between...",
             "summary": "A legal contract between two parties...",
             "entities": {

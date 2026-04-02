@@ -42,7 +42,7 @@ async def analyze_document(file: UploadFile = File(...)):
         logger.info(f"Analysis complete for '{file.filename}' | sentiment={sentiment}")
 
         return AnalysisResponse(
-            filename=file.filename or saved_path.name,
+            fileName=file.filename or saved_path.name,
             extracted_text_preview=preview,
             summary=summary,
             entities=entities,
