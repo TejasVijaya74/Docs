@@ -1,9 +1,11 @@
 import logging
 import sys
+import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.routes.analyze import router as analyze_router
 from app.services.summarizer import SummarizerService
@@ -16,6 +18,8 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stdout)],
 )
 logger = logging.getLogger(__name__)
+
+API_KEY = os.getenv("X_API_KEY", "hackathon-key-2024")
 
 
 @asynccontextmanager
@@ -42,6 +46,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def verify_api_key(request: Request, call_next):
+    if request.url.path in ("/health", "/docs", "/openapi.json", "/redoc"):
+        return await call_next(request)
+    key = request.headers.get("x-api-key")
+    if not key or key != API_KEY:
+        return JSONResponse(status_code=401, content={"detail": "Invalid or missing x-api-key"})
+    return await call_next(request)
+
 
 app.include_router(analyze_router, prefix="/api/v1")
 
