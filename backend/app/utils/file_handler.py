@@ -58,3 +58,22 @@ def cleanup(path: Path):
         path.unlink(missing_ok=True)
     except Exception as e:
         logger.warning(f"Failed to delete temp file {path}: {e}")
+
+async def save_upload_from_spooled(file) -> Path:
+    content_type = getattr(file, "content_type", "") or ""
+    filename = getattr(file, "filename", "") or ""
+    
+    extension = ALLOWED_EXTENSIONS.get(content_type)
+    if not extension:
+        ext_from_name = Path(filename).suffix.lower()
+        ext_map = {".pdf": ".pdf", ".docx": ".docx", ".png": ".png", ".jpg": ".jpg", ".jpeg": ".jpg"}
+        extension = ext_map.get(ext_from_name, ".bin")
+
+    dest = UPLOAD_DIR / f"{uuid.uuid4()}{extension}"
+    
+    async with aiofiles.open(dest, "wb") as out:
+        content = await file.read()
+        await out.write(content)
+
+    logger.info(f"Saved upload: {dest.name}")
+    return dest

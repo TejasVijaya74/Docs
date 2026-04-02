@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from fastapi import APIRouter, File, UploadFile, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 
 from app.schemas.response import AnalysisResponse
@@ -9,18 +9,30 @@ from app.services.extractor import extract_text
 from app.services.summarizer import SummarizerService
 from app.services.ner import NERService
 from app.services.sentiment import SentimentService
-from app.utils.file_handler import save_upload, cleanup
+from app.utils.file_handler import save_upload_from_spooled, cleanup
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
 @router.post("/analyze", response_model=AnalysisResponse)
-async def analyze_document(file: UploadFile = File(...)):
+async def analyze_document(request: Request):
     saved_path: Path | None = None
 
     try:
-        saved_path = await save_upload(file)
+        form = await request.form()
+
+        file = None
+        for key in form:
+            value = form[key]
+            if hasattr(value, "filename") and hasattr(value, "read"):
+                file = value
+                break
+
+        if file is None:
+            raise HTTPException(status_code=422, detail="No file found in request body.")
+
+        saved_path = await save_upload_from_spooled(file)
 
         text = await run_in_threadpool(extract_text, saved_path)
 
@@ -52,7 +64,7 @@ async def analyze_document(file: UploadFile = File(...)):
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception(f"Analysis failed for '{file.filename}': {e}")
+        logger.exception(f"Analysis failed: {e}")
         raise HTTPException(status_code=500, detail=f"Analysis pipeline error: {str(e)}")
 
     finally:
